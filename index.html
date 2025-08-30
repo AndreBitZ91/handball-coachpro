@@ -164,48 +164,83 @@
                 setTimeout(() => statusBar.textContent = '', 3000);
                 return;
             }
-            if (!pickerInited) return;
-
-            // CORREÇÃO: Usar ViewId.FOLDERS para uma interface mais limpa, apenas com pastas.
-            const folderView = new google.picker.View(google.picker.ViewId.FOLDERS);
-            folderView.setMimeTypes('application/vnd.google-apps.folder');
-
-            const picker = new google.picker.PickerBuilder()
-                .enableFeature(google.picker.Feature.NAV_HIDDEN)
-                .setAppId(CLIENT_ID.split('-')[0])
-                .setOAuthToken(gapi.client.getToken().access_token)
-                .addView(folderView) // Usar a nova view corrigida
-                .setTitle("Selecione a pasta para salvar")
-                .setDeveloperKey(API_KEY)
-                .setCallback(savePickerCallback)
-                .build();
-            picker.setVisible(true);
+            findOrCreateAppFolder();
         }
 
-        async function savePickerCallback(data) {
-            if (data.action === google.picker.Action.PICKED) {
-                const folder = data.docs[0];
-                await saveFileToFolder(folder.id);
+        async function findOrCreateAppFolder() {
+            const statusBar = document.getElementById('status-bar');
+            statusBar.textContent = 'A procurar a pasta "Handball CoachPro"...';
+            try {
+                let folderSearchResponse = await gapi.client.drive.files.list({
+                    q: "mimeType='application/vnd.google-apps.folder' and name='Handball CoachPro' and trashed=false",
+                    fields: 'files(id, name)',
+                    spaces: 'drive'
+                });
+
+                let folderId;
+                if (folderSearchResponse.result.files.length > 0) {
+                    folderId = folderSearchResponse.result.files[0].id;
+                    statusBar.textContent = 'Pasta encontrada.';
+                } else {
+                    statusBar.textContent = 'A criar a pasta "Handball CoachPro"...';
+                    let folderMetadata = {
+                        'name': 'Handball CoachPro',
+                        'mimeType': 'application/vnd.google-apps.folder'
+                    };
+                    let folderCreateResponse = await gapi.client.drive.files.create({
+                        resource: folderMetadata,
+                        fields: 'id'
+                    });
+                    folderId = folderCreateResponse.result.id;
+                    statusBar.textContent = 'Pasta criada com sucesso.';
+                }
+                
+                checkAndSaveFile(folderId);
+
+            } catch (e) {
+                console.error(e);
+                statusBar.textContent = 'Erro ao procurar ou criar a pasta.';
+                setTimeout(() => statusBar.textContent = '', 3000);
             }
         }
 
-        async function saveFileToFolder(folderId) {
-            const statusBar = document.getElementById('status-bar');
-            statusBar.textContent = 'A procurar ficheiro existente na pasta...';
-
-            try {
-                const searchResponse = await gapi.client.drive.files.list({
-                    q: `'${folderId}' in parents and name = 'dados_andebol.json' and trashed = false`,
+        async function checkAndSaveFile(folderId) {
+             const statusBar = document.getElementById('status-bar');
+             statusBar.textContent = 'A verificar se o ficheiro já existe...';
+             try {
+                 const searchResponse = await gapi.client.drive.files.list({
+                    q: `'${folderId}' in parents and name = 'CoachPro.json' and trashed = false`,
                     fields: 'files(id)',
                     spaces: 'drive'
                 });
 
-                let fileToUpdateId = null;
+                let existingFileId = null;
                 if (searchResponse.result.files && searchResponse.result.files.length > 0) {
-                    fileToUpdateId = searchResponse.result.files[0].id;
+                    existingFileId = searchResponse.result.files[0].id;
                 }
 
-                statusBar.textContent = 'A salvar no Google Drive...';
+                if (existingFileId) {
+                    abrirModalConfirmacao(
+                        'Substituir Ficheiro', 
+                        'Já existe um ficheiro "CoachPro.json" na pasta. Deseja substituí-lo pelos dados atuais?', 
+                        () => { saveFileToFolder(folderId, existingFileId); }
+                    );
+                } else {
+                    saveFileToFolder(folderId, null);
+                }
+
+             } catch(e) {
+                console.error(e);
+                statusBar.textContent = 'Erro ao verificar o ficheiro.';
+                setTimeout(() => statusBar.textContent = '', 3000);
+             }
+        }
+
+        async function saveFileToFolder(folderId, fileToUpdateId) {
+            const statusBar = document.getElementById('status-bar');
+            statusBar.textContent = 'A salvar no Google Drive...';
+
+            try {
                 const dadosString = JSON.stringify(treinos, null, 2);
                 const blob = new Blob([dadosString], { type: 'application/json' });
                 const form = new FormData();
@@ -220,7 +255,7 @@
                     path = `/upload/drive/v3/files/${fileToUpdateId}?uploadType=multipart`;
                 } else {
                     const metadata = { 
-                        name: 'dados_andebol.json', 
+                        name: 'CoachPro.json', 
                         mimeType: 'application/json',
                         parents: [folderId]
                     };
