@@ -103,6 +103,7 @@
             tokenClient.callback = async (resp) => {
                 if (resp.error === undefined) {
                     updateAuthUI(true);
+                    await loadDataOnLogin(); // Carrega os dados automaticamente após o login
                 } else {
                     // O utilizador fechou a janela de seleção de conta, não é um erro crítico.
                     console.log('Janela de login fechada pelo utilizador.');
@@ -122,6 +123,55 @@
                 ficheiroDriveId = null;
                 atualizarTudo();
                 updateAuthUI(false);
+            }
+        }
+
+        async function loadDataOnLogin() {
+            const statusBar = document.getElementById('status-bar');
+            statusBar.textContent = 'A procurar dados existentes no Google Drive...';
+            try {
+                // 1. Procurar a pasta da aplicação
+                const folderSearchResponse = await gapi.client.drive.files.list({
+                    q: "mimeType='application/vnd.google-apps.folder' and name='Handball CoachPro' and trashed=false",
+                    fields: 'files(id)',
+                    spaces: 'drive'
+                });
+
+                if (folderSearchResponse.result.files.length === 0) {
+                    statusBar.textContent = 'Bem-vindo! Nenhuma pasta da aplicação encontrada. Pode salvar para criar uma.';
+                    setTimeout(() => statusBar.textContent = '', 5000);
+                    return; 
+                }
+                const folderId = folderSearchResponse.result.files[0].id;
+
+                // 2. Procurar o ficheiro na pasta
+                const fileSearchResponse = await gapi.client.drive.files.list({
+                    q: `'${folderId}' in parents and name='CoachPro.json' and trashed=false`,
+                    fields: 'files(id, name)',
+                    spaces: 'drive'
+                });
+
+                if (fileSearchResponse.result.files.length === 0) {
+                    statusBar.textContent = 'Pasta da aplicação encontrada, mas sem ficheiro de dados.';
+                    setTimeout(() => statusBar.textContent = '', 5000);
+                    return; 
+                }
+                const file = fileSearchResponse.result.files[0];
+                ficheiroDriveId = file.id;
+
+                // 3. Carregar o conteúdo do ficheiro
+                statusBar.textContent = `A carregar ficheiro "${file.name}"...`;
+                const resp = await gapi.client.drive.files.get({ fileId: ficheiroDriveId, alt: 'media' });
+                treinos = JSON.parse(resp.body);
+                treinoSelecionadoId = null;
+                atualizarTudo();
+                statusBar.textContent = `Ficheiro "${file.name}" carregado automaticamente.`;
+
+            } catch (e) {
+                console.error("Erro ao carregar dados automaticamente:", e);
+                statusBar.textContent = 'Ocorreu um erro ao tentar carregar os dados automaticamente.';
+            } finally {
+                setTimeout(() => statusBar.textContent = '', 5000);
             }
         }
 
