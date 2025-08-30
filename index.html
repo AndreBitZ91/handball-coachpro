@@ -100,8 +100,16 @@
         }
         
         function handleAuthClick() {
-            tokenClient.callback = async (resp) => { if (resp.error === undefined) { updateAuthUI(true); } else { throw (resp); } };
-            if (gapi.client.getToken() === null) { tokenClient.requestAccessToken({ prompt: 'consent' }); } else { tokenClient.requestAccessToken({ prompt: '' }); }
+            tokenClient.callback = async (resp) => {
+                if (resp.error === undefined) {
+                    updateAuthUI(true);
+                } else {
+                    // O utilizador fechou a janela de seleção de conta, não é um erro crítico.
+                    console.log('Janela de login fechada pelo utilizador.');
+                }
+            };
+            // Força sempre a exibição do seletor de contas do Google ao usar 'select_account'.
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
         }
 
         function handleSignout() {
