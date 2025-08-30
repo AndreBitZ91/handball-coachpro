@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Treinos de Andebol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- GOOGLE API SCRIPTS -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-backdrop {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .drive-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Cabeçalho -->
+        <header class="bg-slate-800/50 backdrop-blur-sm shadow-lg p-4 sticky top-0 z-20">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-cyan-400">Planeamento de Treinos de Andebol</h1>
+                <div id="authContainer" class="flex items-center gap-4">
+                    <!-- Botões de autenticação serão inseridos aqui pelo JS -->
+                </div>
+            </div>
+             <div id="status-bar" class="text-center text-sm text-yellow-400 h-5 mt-2"></div>
+        </header>
+
+        <!-- Conteúdo Principal -->
+        <main class="container mx-auto p-4 lg:p-6 flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Coluna de Treinos -->
+            <aside class="lg:col-span-1 bg-slate-800 rounded-lg p-4 flex flex-col h-full max-h-[calc(100vh-140px)]">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Sessões de Treino</h2>
+                    <button id="adicionarTreinoBtn" class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-2 px-3 rounded-full text-sm transition-transform duration-200 hover:scale-105">+</button>
+                </div>
+                <div id="listaTreinos" class="overflow-y-auto space-y-2 pr-2">
+                    <!-- Treinos serão inseridos aqui dinamicamente -->
+                    <p class="text-slate-400 text-center py-8">Nenhum treino adicionado. Faça login para carregar os seus dados.</p>
+                </div>
+            </aside>
+
+            <!-- Coluna de Detalhes do Treino -->
+            <section id="detalhesTreino" class="lg:col-span-2 bg-slate-800 rounded-lg p-6 flex flex-col h-full max-h-[calc(100vh-140px)]">
+                <!-- Conteúdo dos detalhes do treino selecionado -->
+                <div id="vistaInicial" class="flex flex-col items-center justify-center h-full text-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-600 mb-4"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <h3 class="text-2xl font-semibold text-slate-300">Selecione um treino</h3>
+                    <p class="text-slate-400 mt-2">Ou crie uma nova sessão para começar a planear.</p>
+                </div>
+
+                <div id="vistaDetalhes" class="hidden flex-col h-full">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 id="detalheData" class="text-3xl font-bold text-cyan-400"></h2>
+                            <p id="detalheObjetivos" class="text-slate-300 mt-1"></p>
+                        </div>
+                         <button id="apagarTreinoBtn" class="text-red-500 hover:text-red-400 transition-colors p-2 rounded-md hover:bg-red-500/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="border-t border-slate-700 pt-4 flex-grow flex flex-col">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xl font-semibold">Exercícios</h3>
+                            <button id="adicionarExercicioBtn" class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-1 px-3 rounded-lg text-sm transition-transform duration-200 hover:scale-105">Adicionar Exercício</button>
+                        </div>
+                        <div id="listaExercicios" class="overflow-y-auto space-y-3 pr-2 flex-grow">
+                            <!-- Exercícios serão inseridos aqui -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modalTreino" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden modal-backdrop">
+        <div class="bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6 modal-content scale-95">
+            <h2 id="modalTreinoTitulo" class="text-2xl font-bold mb-4">Novo Treino</h2>
+            <form id="formTreino">
+                <div class="mb-4">
+                    <label for="dataTreino" class="block text-sm font-medium text-slate-300 mb-1">Data do Treino</label>
+                    <input type="date" id="dataTreino" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" required>
+                </div>
+                <div class="mb-6">
+                    <label for="objetivosTreino" class="block text-sm font-medium text-slate-300 mb-1">Objetivos</label>
+                    <textarea id="objetivosTreino" rows="4" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="Ex: Melhorar a defesa 6-0, contra-ataque..." required></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancelarModalTreino" class="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
+                    <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="modalExercicio" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden modal-backdrop">
+        <div class="bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6 modal-content scale-95">
+            <h2 id="modalExercicioTitulo" class="text-2xl font-bold mb-4">Novo Exercício</h2>
+            <form id="formExercicio">
+                <div class="mb-4">
+                    <label for="nomeExercicio" class="block text-sm font-medium text-slate-300 mb-1">Nome</label>
+                    <input type="text" id="nomeExercicio" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="Ex: Remate em suspensão" required>
+                </div>
+                 <div class="mb-4">
+                    <label for="duracaoExercicio" class="block text-sm font-medium text-slate-300 mb-1">Duração (minutos)</label>
+                    <input type="number" id="duracaoExercicio" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="Ex: 15" min="1" required>
+                </div>
+                <div class="mb-4">
+                    <label for="descricaoExercicio" class="block text-sm font-medium text-slate-300 mb-1">Descrição</label>
+                    <textarea id="descricaoExercicio" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="Descreva os pontos chave do exercício"></textarea>
+                </div>
+                 <div class="mb-6">
+                    <label for="mediaExercicio" class="block text-sm font-medium text-slate-300 mb-1">Link de Imagem/Vídeo (URL)</label>
+                    <input type="url" id="mediaExercicio" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="https://exemplo.com/video.mp4">
+                    <p class="text-xs text-slate-500 mt-1">Cole aqui um link de uma imagem ou vídeo (ex: do YouTube, Imgur, etc).</p>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancelarModalExercicio" class="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
+                    <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Salvar Exercício</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Modal de Confirmação -->
+    <div id="modalConfirmacao" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden modal-backdrop">
+        <div class="bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6 modal-content scale-95">
+            <h2 id="modalConfirmacaoTitulo" class="text-2xl font-bold mb-2 text-yellow-400">Confirmar Ação</h2>
+            <p id="modalConfirmacaoMensagem" class="text-slate-300 mb-6"></p>
+            <div class="flex justify-end gap-3">
+                <button type="button" id="cancelarModalConfirmacao" class="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Cancelar</button>
+                <button type="button" id="confirmarModalConfirmacao" class="bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- GOOGLE DRIVE API ---
+        
+        // !!!!! IMPORTANTE !!!!!
+        // Substitua os valores abaixo pelas suas credenciais da Google Cloud Console.
+        // 1. Obtenha uma API Key.
+        // 2. Obtenha um OAuth 2.0 Client ID.
+        const API_KEY = 'AIzaSyBWdYwB6yBpO2LiWtu1z5qGFDkBxR5ihbY'; 
+        const CLIENT_ID = '707219387764-l5qtsi16686j3ul1r7iffr0k67qobb7p.apps.googleusercontent.com';
+
+        // VERIFICAÇÃO DE CONFIGURAÇÃO: Mostra um erro se as credenciais não forem alteradas.
+        if (API_KEY === 'SUA_API_KEY_AQUI' || CLIENT_ID === 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com') {
+            document.body.innerHTML = `<div class="p-8 text-center bg-red-900 text-white h-screen flex flex-col justify-center items-center">
+                <h1 class="text-3xl font-bold mb-4">Erro de Configuração</h1>
+                <p class="max-w-xl leading-relaxed">Parece que as credenciais da API do Google Drive não foram configuradas.<br>Por favor, edite o ficheiro <strong>index.html</strong> e substitua os valores de <code>SUA_API_KEY_AQUI</code> e <code>SEU_CLIENT_ID_AQUI</code> pelas suas credenciais reais que pode obter na Google Cloud Console.</p>
+            </div>`;
+            // Pára a execução do script para evitar mais erros.
+            throw new Error("Credenciais da API do Google não configuradas.");
+        }
+        
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let pickerInited = false;
+
+        // --- ESTADO DA APLICAÇÃO ---
+        let treinos = [];
+        let treinoSelecionadoId = null;
+        let exercicioAEditarId = null;
+        let ficheiroDriveId = null;
+        let acaoConfirmacaoCallback = null; // Guarda a função a executar na confirmação
+
+        // --- ELEMENTOS DO DOM ---
+        const authContainer = document.getElementById('authContainer');
+        const statusBar = document.getElementById('status-bar');
+        const listaTreinosEl = document.getElementById('listaTreinos');
+        const detalhesTreinoEl = document.getElementById('detalhesTreino');
+        const vistaInicialEl = document.getElementById('vistaInicial');
+        const vistaDetalhesEl = document.getElementById('vistaDetalhes');
+        const detalheDataEl = document.getElementById('detalheData');
+        const detalheObjetivosEl = document.getElementById('detalheObjetivos');
+        const listaExerciciosEl = document.getElementById('listaExercicios');
+        const adicionarTreinoBtn = document.getElementById('adicionarTreinoBtn');
+        const apagarTreinoBtn = document.getElementById('apagarTreinoBtn');
+        const adicionarExercicioBtn = document.getElementById('adicionarExercicioBtn');
+
+        // Modals
+        const modalTreino = document.getElementById('modalTreino');
+        const modalTreinoTitulo = document.getElementById('modalTreinoTitulo');
+        const formTreino = document.getElementById('formTreino');
+        const dataTreinoInput = document.getElementById('dataTreino');
+        const objetivosTreinoInput = document.getElementById('objetivosTreino');
+        const cancelarModalTreino = document.getElementById('cancelarModalTreino');
+        const modalExercicio = document.getElementById('modalExercicio');
+        const modalExercicioTitulo = document.getElementById('modalExercicioTitulo');
+        const formExercicio = document.getElementById('formExercicio');
+        const nomeExercicioInput = document.getElementById('nomeExercicio');
+        const duracaoExercicioInput = document.getElementById('duracaoExercicio');
+        const descricaoExercicioInput = document.getElementById('descricaoExercicio');
+        const mediaExercicioInput = document.getElementById('mediaExercicio');
+        const cancelarModalExercicio = document.getElementById('cancelarModalExercicio');
+        const modalConfirmacao = document.getElementById('modalConfirmacao');
+        const cancelarModalConfirmacao = document.getElementById('cancelarModalConfirmacao');
+        const confirmarModalConfirmacao = document.getElementById('confirmarModalConfirmacao');
+        
+        // --- LÓGICA DE INICIALIZAÇÃO GOOGLE API ---
+        
+        function gapiLoaded() {
+             gapi.load('client:picker', initializeGapiClient);
+        }
+        
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '',
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        };
+
+        async function initializeGapiClient() {
+            await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+            gapiInited = true;
+            pickerInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                updateAuthUI(false);
+                atualizarTudo();
+            }
+        }
+        
+        // --- AUTENTICAÇÃO E INTERAÇÃO COM O DRIVE ---
+
+        function updateAuthUI(isSignedIn) {
+            authContainer.innerHTML = '';
+            if (isSignedIn) {
+                authContainer.innerHTML = `
+                    <button id="carregarDriveBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 drive-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Carregar
+                    </button>
+                    <button id="salvarDriveBtn" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 drive-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Salvar
+                    </button>
+                     <button id="sairBtn" class="bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">Sair</button>
+                `;
+                document.getElementById('carregarDriveBtn').addEventListener('click', handleLoadFromDrive);
+                document.getElementById('salvarDriveBtn').addEventListener('click', handleSaveToDrive);
+                document.getElementById('sairBtn').addEventListener('click', handleSignout);
+            } else {
+                authContainer.innerHTML = `<button id="entrarBtn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">Entrar com Google</button>`;
+                document.getElementById('entrarBtn').addEventListener('click', handleAuthClick);
+            }
+        }
+        
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => { if (resp.error === undefined) { updateAuthUI(true); } else { throw (resp); } };
+            if (gapi.client.getToken() === null) { tokenClient.requestAccessToken({ prompt: 'consent' }); } else { tokenClient.requestAccessToken({ prompt: '' }); }
+        }
+
+        function handleSignout() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                treinos = [];
+                treinoSelecionadoId = null;
+                ficheiroDriveId = null;
+                atualizarTudo();
+                updateAuthUI(false);
+            }
+        }
+
+        function handleLoadFromDrive() {
+            if (!pickerInited) return;
+            const view = new google.picker.View(google.picker.ViewId.DOCS);
+            view.setMimeTypes("application/json");
+            const picker = new google.picker.PickerBuilder()
+                .enableFeature(google.picker.Feature.NAV_HIDDEN)
+                .setAppId(CLIENT_ID.split('-')[0])
+                .setOAuthToken(gapi.client.getToken().access_token)
+                .addView(view)
+                .setDeveloperKey(API_KEY)
+                .setCallback(pickerCallback)
+                .build();
+            picker.setVisible(true);
+        }
+
+        async function pickerCallback(data) {
+            if (data.action === google.picker.Action.PICKED) {
+                const doc = data.docs[0];
+                ficheiroDriveId = doc.id;
+                statusBar.textContent = 'A carregar ficheiro...';
+                try {
+                    const resp = await gapi.client.drive.files.get({ fileId: ficheiroDriveId, alt: 'media' });
+                    treinos = JSON.parse(resp.body);
+                    treinoSelecionadoId = null;
+                    atualizarTudo();
+                    statusBar.textContent = `Ficheiro "${doc.name}" carregado com sucesso.`;
+                } catch (e) { console.error(e); statusBar.textContent = 'Erro ao carregar o ficheiro.'; } 
+                finally { setTimeout(() => statusBar.textContent = '', 3000); }
+            }
+        }
+        
+        async function handleSaveToDrive() {
+            if (treinos.length === 0) {
+                statusBar.textContent = "Não há dados para salvar.";
+                setTimeout(() => statusBar.textContent = '', 3000);
+                return;
+            }
+            statusBar.textContent = 'A salvar no Google Drive...';
+            const dadosString = JSON.stringify(treinos, null, 2);
+            const blob = new Blob([dadosString], { type: 'application/json' });
+            const metadata = { name: 'dados_andebol.json', mimeType: 'application/json' };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', blob);
+
+            const method = ficheiroDriveId ? 'PATCH' : 'POST';
+            const path = ficheiroDriveId ? `/upload/drive/v3/files/${ficheiroDriveId}?uploadType=multipart` : '/upload/drive/v3/files?uploadType=multipart';
+
+            try {
+                const res = await gapi.client.request({ path, method, body: form });
+                if (!ficheiroDriveId) { ficheiroDriveId = res.result.id; }
+                statusBar.textContent = 'Salvo com sucesso no Google Drive!';
+            } catch (e) {
+                console.error(e);
+                statusBar.textContent = 'Erro ao salvar. Tente novamente.';
+                if (e.status === 401 || e.status === 403) { handleAuthClick(); }
+            } finally {
+                setTimeout(() => statusBar.textContent = '', 3000);
+            }
+        }
+
+
+        // --- FUNÇÕES DE RENDERIZAÇÃO ---
+
+        function renderizarTreinos() {
+            listaTreinosEl.innerHTML = '';
+            if (treinos.length === 0) {
+                 if (!gapiInited || !gisInited || gapi.client.getToken() === null) { listaTreinosEl.innerHTML = `<p class="text-slate-400 text-center py-8">Faça login para carregar os seus dados.</p>`; } 
+                 else { listaTreinosEl.innerHTML = `<p class="text-slate-400 text-center py-8">Crie um treino ou carregue um ficheiro do Drive.</p>`; }
+                return;
+            }
+            
+            const treinosOrdenados = [...treinos].sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            treinosOrdenados.forEach(treino => {
+                const isSelected = treino.id === treinoSelecionadoId;
+                const treinoEl = document.createElement('div');
+                treinoEl.className = `p-3 rounded-lg cursor-pointer transition-colors duration-200 ${isSelected ? 'bg-cyan-500/20 ring-2 ring-cyan-500' : 'bg-slate-700 hover:bg-slate-600/50'}`;
+                treinoEl.dataset.id = treino.id;
+                const dataFormatada = new Date(treino.data + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                treinoEl.innerHTML = `<p class="font-semibold text-white">${dataFormatada}</p><p class="text-sm text-slate-400 truncate">${treino.objetivos}</p>`;
+                treinoEl.addEventListener('click', () => selecionarTreino(treino.id));
+                listaTreinosEl.appendChild(treinoEl);
+            });
+        }
+
+        function renderizarDetalhesTreino() {
+            if (!treinoSelecionadoId) { vistaInicialEl.classList.remove('hidden'); vistaDetalhesEl.classList.add('hidden'); return; }
+            const treino = treinos.find(t => t.id === treinoSelecionadoId);
+            if (!treino) { treinoSelecionadoId = null; renderizarDetalhesTreino(); return; }
+
+            vistaInicialEl.classList.add('hidden');
+            vistaDetalhesEl.classList.remove('hidden');
+            vistaDetalhesEl.classList.add('flex');
+            const dataFormatada = new Date(treino.data + 'T00:00:00').toLocaleDateString('pt-PT', { year: 'numeric', month: 'long', day: 'numeric' });
+            detalheDataEl.textContent = dataFormatada;
+            detalheObjetivosEl.textContent = `Objetivos: ${treino.objetivos}`;
+            renderizarExercicios(treino.exercicios);
+        }
+        
+        function renderizarExercicios(exercicios) {
+            listaExerciciosEl.innerHTML = '';
+            if(!exercicios || exercicios.length === 0) { listaExerciciosEl.innerHTML = `<div class="text-center py-10 text-slate-500"><p>Nenhum exercício adicionado a este treino.</p></div>`; return; }
+
+            exercicios.forEach(ex => {
+                const exercicioEl = document.createElement('div');
+                exercicioEl.className = 'bg-slate-700/50 p-4 rounded-lg';
+                let mediaHTML = '';
+                if (ex.media) {
+                    if (ex.media.includes("youtube.com") || ex.media.includes("youtu.be")) {
+                        const videoId = ex.media.split('v=')[1]?.split('&')[0] || ex.media.split('/').pop();
+                        mediaHTML = `<div class="aspect-video mt-3 rounded-md overflow-hidden"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe></div>`;
+                    } else if (/\.(jpeg|jpg|gif|png|webp)$/i.test(ex.media)) {
+                        mediaHTML = `<img src="${ex.media}" alt="${ex.nome}" class="mt-3 rounded-md max-h-60 w-auto mx-auto">`;
+                    } else { mediaHTML = `<a href="${ex.media}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-cyan-400 hover:underline break-all">Ver Média</a>`; }
+                }
+
+                exercicioEl.innerHTML = `<div class="flex justify-between items-start">
+                    <div><h4 class="font-bold text-lg text-cyan-300">${ex.nome}</h4><p class="text-sm text-slate-400 font-medium">${ex.duracao} minutos</p><p class="text-slate-300 mt-2 whitespace-pre-wrap">${ex.descricao || ''}</p>${mediaHTML}</div>
+                    <div class="flex flex-col gap-2 ml-4">
+                        <button data-id="${ex.id}" class="editar-exercicio-btn text-yellow-500 hover:text-yellow-400 p-1.5 rounded-md hover:bg-yellow-500/10"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                        <button data-id="${ex.id}" class="apagar-exercicio-btn text-red-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div></div>`;
+                listaExerciciosEl.appendChild(exercicioEl);
+            });
+
+            document.querySelectorAll('.apagar-exercicio-btn').forEach(btn => btn.addEventListener('click', (e) => apagarExercicio(e.currentTarget.dataset.id)));
+            document.querySelectorAll('.editar-exercicio-btn').forEach(btn => btn.addEventListener('click', (e) => abrirModalExercicioParaEdicao(e.currentTarget.dataset.id)));
+        }
+
+        // --- LÓGICA DA APLICAÇÃO ---
+
+        function selecionarTreino(id) { treinoSelecionadoId = id; atualizarTudo(); }
+
+        function apagarTreino() {
+            if (!treinoSelecionadoId) return;
+            abrirModalConfirmacao('Apagar Treino', 'Tem a certeza que deseja apagar este treino e todos os seus exercícios? Esta ação não pode ser desfeita.', () => {
+                treinos = treinos.filter(t => t.id !== treinoSelecionadoId);
+                treinoSelecionadoId = null;
+                atualizarTudo();
+            });
+        }
+        
+        function apagarExercicio(exercicioId) {
+             const treino = treinos.find(t => t.id === treinoSelecionadoId);
+             if(!treino) return;
+             abrirModalConfirmacao('Apagar Exercício', 'Tem a certeza que deseja apagar este exercício?', () => {
+                treino.exercicios = treino.exercicios.filter(ex => ex.id !== exercicioId);
+                atualizarTudo();
+             });
+        }
+
+        function abrirModalExercicioParaEdicao(exercicioId) {
+            exercicioAEditarId = exercicioId;
+            const treino = treinos.find(t => t.id === treinoSelecionadoId);
+            const exercicio = treino.exercicios.find(ex => ex.id === exercicioId);
+            modalExercicioTitulo.textContent = 'Editar Exercício';
+            formExercicio.reset();
+            nomeExercicioInput.value = exercicio.nome;
+            duracaoExercicioInput.value = exercicio.duracao;
+            descricaoExercicioInput.value = exercicio.descricao;
+            mediaExercicioInput.value = exercicio.media;
+            abrirModal(modalExercicio);
+        }
+
+        // --- LÓGICA DOS MODALS ---
+
+        function abrirModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); modal.querySelector('.modal-content').classList.remove('scale-95'); }, 10);
+        }
+        function fecharModal(modal) {
+             modal.classList.add('opacity-0'); modal.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+        function abrirModalConfirmacao(titulo, mensagem, callback) {
+            document.getElementById('modalConfirmacaoTitulo').textContent = titulo;
+            document.getElementById('modalConfirmacaoMensagem').textContent = mensagem;
+            document.getElementById('confirmarModalConfirmacao').textContent = titulo.split(' ')[0]; // ex: Apagar
+            acaoConfirmacaoCallback = callback;
+            abrirModal(modalConfirmacao);
+        }
+        
+        adicionarTreinoBtn.addEventListener('click', () => { formTreino.reset(); modalTreinoTitulo.textContent = "Novo Treino"; abrirModal(modalTreino); });
+        cancelarModalTreino.addEventListener('click', () => fecharModal(modalTreino));
+        formTreino.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const novoTreino = { id: 'treino_' + Date.now(), data: dataTreinoInput.value, objetivos: objetivosTreinoInput.value, exercicios: [] };
+            treinos.push(novoTreino);
+            treinoSelecionadoId = novoTreino.id;
+            fecharModal(modalTreino);
+            atualizarTudo();
+        });
+        
+        adicionarExercicioBtn.addEventListener('click', () => { if (!treinoSelecionadoId) return; formExercicio.reset(); exercicioAEditarId = null; modalExercicioTitulo.textContent = 'Novo Exercício'; abrirModal(modalExercicio); });
+        cancelarModalExercicio.addEventListener('click', () => fecharModal(modalExercicio));
+        formExercicio.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const treino = treinos.find(t => t.id === treinoSelecionadoId);
+            if (!treino) return;
+            const dadosExercicio = { nome: nomeExercicioInput.value, duracao: duracaoExercicioInput.value, descricao: descricaoExercicioInput.value, media: mediaExercicioInput.value, };
+            if (exercicioAEditarId) { const index = treino.exercicios.findIndex(ex => ex.id === exercicioAEditarId); treino.exercicios[index] = { ...treino.exercicios[index], ...dadosExercicio }; } 
+            else { treino.exercicios.push({ id: 'ex_' + Date.now(), ...dadosExercicio }); }
+            fecharModal(modalExercicio);
+            atualizarTudo();
+        });
+
+        apagarTreinoBtn.addEventListener('click', apagarTreino);
+        cancelarModalConfirmacao.addEventListener('click', () => { fecharModal(modalConfirmacao); acaoConfirmacaoCallback = null; });
+        confirmarModalConfirmacao.addEventListener('click', () => { if (typeof acaoConfirmacaoCallback === 'function') { acaoConfirmacaoCallback(); } fecharModal(modalConfirmacao); acaoConfirmacaoCallback = null; });
+
+        // --- INICIALIZAÇÃO DA APP ---
+        function atualizarTudo() { renderizarTreinos(); renderizarDetalhesTreino(); }
+        
+    </script>
+</body>
+</html>
