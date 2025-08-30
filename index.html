@@ -14,7 +14,7 @@
         const API_KEY = 'AIzaSyBWdYwB6yBpO2LiWtu1z5qGFDkBxR5ihbY'; 
         const CLIENT_ID = '707219387764-l5qtsi16686j3ul1r7iffr0k67qobb7p.apps.googleusercontent.com';
 
-        // VERIFICAÇÃO DE CONFIGURAÇÃO: Mostra um erro se as credenciais não forem alteradas.
+        // VERIFICAÇÃO DE CONFIGURAÇÃO: Mostra um erro se as credenciais не forem alteradas.
         if (API_KEY === 'SUA_API_KEY_AQUI' || CLIENT_ID.startsWith('SEU_CLIENT_ID_AQUI')) {
             // Este bloco só será executado se as credenciais forem revertidas para os placeholders.
             window.onload = () => {
@@ -157,32 +157,88 @@
             }
         }
         
-        async function handleSaveToDrive() {
+        function handleSaveToDrive() {
             const statusBar = document.getElementById('status-bar');
             if (treinos.length === 0) {
                 statusBar.textContent = "Não há dados para salvar.";
                 setTimeout(() => statusBar.textContent = '', 3000);
                 return;
             }
-            statusBar.textContent = 'A salvar no Google Drive...';
-            const dadosString = JSON.stringify(treinos, null, 2);
-            const blob = new Blob([dadosString], { type: 'application/json' });
-            const metadata = { name: 'dados_andebol.json', mimeType: 'application/json' };
-            const form = new FormData();
-            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-            form.append('file', blob);
+            if (!pickerInited) return;
 
-            const method = ficheiroDriveId ? 'PATCH' : 'POST';
-            const path = ficheiroDriveId ? `/upload/drive/v3/files/${ficheiroDriveId}?uploadType=multipart` : '/upload/drive/v3/files?uploadType=multipart';
+            const view = new google.picker.View(google.picker.ViewId.FOLDERS);
+            view.setMimeTypes("application/vnd.google-apps.folder");
+
+            const picker = new google.picker.PickerBuilder()
+                .enableFeature(google.picker.Feature.NAV_HIDDEN)
+                .setAppId(CLIENT_ID.split('-')[0])
+                .setOAuthToken(gapi.client.getToken().access_token)
+                .addView(view)
+                .setTitle("Selecione a pasta para salvar")
+                .setDeveloperKey(API_KEY)
+                .setCallback(savePickerCallback)
+                .build();
+            picker.setVisible(true);
+        }
+
+        async function savePickerCallback(data) {
+            if (data.action === google.picker.Action.PICKED) {
+                const folder = data.docs[0];
+                await saveFileToFolder(folder.id);
+            }
+        }
+
+        async function saveFileToFolder(folderId) {
+            const statusBar = document.getElementById('status-bar');
+            statusBar.textContent = 'A procurar ficheiro existente na pasta...';
 
             try {
+                const searchResponse = await gapi.client.drive.files.list({
+                    q: `'${folderId}' in parents and name = 'dados_andebol.json' and trashed = false`,
+                    fields: 'files(id)',
+                    spaces: 'drive'
+                });
+
+                let fileToUpdateId = null;
+                if (searchResponse.result.files && searchResponse.result.files.length > 0) {
+                    fileToUpdateId = searchResponse.result.files[0].id;
+                }
+
+                statusBar.textContent = 'A salvar no Google Drive...';
+                const dadosString = JSON.stringify(treinos, null, 2);
+                const blob = new Blob([dadosString], { type: 'application/json' });
+                const form = new FormData();
+                
+                let method, path;
+
+                if (fileToUpdateId) {
+                    const metadata = {};
+                    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                    form.append('file', blob);
+                    method = 'PATCH';
+                    path = `/upload/drive/v3/files/${fileToUpdateId}?uploadType=multipart`;
+                } else {
+                    const metadata = { 
+                        name: 'dados_andebol.json', 
+                        mimeType: 'application/json',
+                        parents: [folderId]
+                    };
+                    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                    form.append('file', blob);
+                    method = 'POST';
+                    path = '/upload/drive/v3/files?uploadType=multipart';
+                }
+
                 const res = await gapi.client.request({ path, method, body: form });
-                if (!ficheiroDriveId) { ficheiroDriveId = res.result.id; }
+                ficheiroDriveId = res.result.id;
                 statusBar.textContent = 'Salvo com sucesso no Google Drive!';
+
             } catch (e) {
                 console.error(e);
                 statusBar.textContent = 'Erro ao salvar. Tente novamente.';
-                if (e.status === 401 || e.status === 403) { handleAuthClick(); }
+                if (e.result && (e.result.error.code === 401 || e.result.error.code === 403)) {
+                    handleAuthClick();
+                }
             } finally {
                 setTimeout(() => statusBar.textContent = '', 3000);
             }
