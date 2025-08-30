@@ -166,17 +166,15 @@
             }
             if (!pickerInited) return;
 
-            // CORREÇÃO: Usar DocsView com setSelectFolderEnabled(true)
-            const docsView = new google.picker.DocsView()
-                .setIncludeFolders(true)
-                .setMimeTypes('application/vnd.google-apps.folder')
-                .setSelectFolderEnabled(true);
+            // CORREÇÃO: Usar ViewId.FOLDERS para uma interface mais limpa, apenas com pastas.
+            const folderView = new google.picker.View(google.picker.ViewId.FOLDERS);
+            folderView.setMimeTypes('application/vnd.google-apps.folder');
 
             const picker = new google.picker.PickerBuilder()
                 .enableFeature(google.picker.Feature.NAV_HIDDEN)
                 .setAppId(CLIENT_ID.split('-')[0])
                 .setOAuthToken(gapi.client.getToken().access_token)
-                .addView(docsView) // Usar a nova view corrigida
+                .addView(folderView) // Usar a nova view corrigida
                 .setTitle("Selecione a pasta para salvar")
                 .setDeveloperKey(API_KEY)
                 .setCallback(savePickerCallback)
